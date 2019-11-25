@@ -8,10 +8,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace XMLProcessing
 {
+    public static class FilterTools
+    {
+        public static int LINQ { get; set; } = 0;
+        public static int DOM { get; set; } = 1;
+        public static int SAX { get; set; } = 2;
+    }
+
     public class CD 
     {
         public string Title { get; set; }
@@ -59,6 +67,11 @@ namespace XMLProcessing
             _disks = new List<CD>();
         }
 
+        public void Clear()
+        {
+            _disks.Clear();
+        }
+
         public void addDisk(CD disk)
         {
             _disks.Add(disk);
@@ -75,10 +88,6 @@ namespace XMLProcessing
             {
                 NumberDecimalSeparator = "."
             };
-            foreach (var p in filterBy.GetType().GetProperties())
-            {
-                Console.WriteLine($"{p.Name}: {p.GetValue(filterBy)}");
-            }
             return new List<CD>(_disks
                 .Where(d => 
                     d.Title.ToLower().Contains(filterBy.Title.ToLower().Trim())
@@ -132,7 +141,7 @@ namespace XMLProcessing
                     }
                 }));
         }
-
+        
         public string FilteredToDisplay(DiskFilter filter)
         {
             string res = "";
@@ -161,9 +170,12 @@ namespace XMLProcessing
         RichTextBox ContentContainer;
         ComboBox TitleFilter, ArtistFilter, CountryFilter, CompanyFilter;
         TextBox PriceFilterFrom, PriceFilterTo, YearFilterFrom, YearFilterTo;
-        XDocument XMLCatalog;
         DiskFilter FiltersData = new DiskFilter();
+        RadioButton LINQ, DOM, SAX;
+        int Tool = FilterTools.LINQ;
+        XmlDocument XMLCatalog = new XmlDocument();
         Catalog Disks = new Catalog();
+        Button Reload; 
 
         public XMLParser()
         {
@@ -171,79 +183,165 @@ namespace XMLProcessing
             ContentContainer = new RichTextBox
             {
                 Location = new Point(30, 30),
-                Size = new Size((Width - 120) / 2, ClientSize.Height - 80)
+                Size = new Size((Width - 120) / 2, ClientSize.Height - 70)
             };
             InitializeFilters();
+            InitializeRadioButtons();
             LoadData();
-            FiltersData = new DiskFilter();
+            Reload = new Button()
+            {
+                Text = "Reload data!",
+                Location = new Point(TitleFilter.Bounds.X, LINQ.Bounds.Bottom + 21),
+                Font = new Font("Verdana", 10),
+                Size = new Size(120, 30),
+            };
+            Reload.Click += (s, e) => LoadData();
 
             SizeChanged += XMLParser_SizeChanged;
 
             Controls.Add(ContentContainer);
-            Controls.Add(TitleFilter);
-            Controls.Add(ArtistFilter);
-            Controls.Add(CountryFilter);
-            Controls.Add(CompanyFilter);
-            Controls.Add(PriceFilterFrom);
-            Controls.Add(PriceFilterTo);
-            Controls.Add(YearFilterFrom);
-            Controls.Add(YearFilterTo);
+            Controls.Add(Reload);
         }
 
         void LoadData()
         {
-            XMLCatalog = XDocument.Load("../../data.xml");
-            Disks.addDisks(
-                (from cd in XMLCatalog.Element("CATALOG").Elements("CD")
-                select new CD
+            Console.WriteLine($"LoadData: Tool is {Tool}");
+            Disks.Clear();
+            if (Tool == FilterTools.LINQ)
+            {
+                XDocument XMLDocCatalog = XDocument.Load("../../data.xml");
+                Disks.addDisks(
+                    (from cd in XMLDocCatalog.Element("catalog").Elements("cd")
+                     select new CD
+                     {
+                         Title = cd.Element("title").Value,
+                         Artist = cd.Element("artist").Value,
+                         Country = cd.Element("country").Value,
+                         Company = cd.Element("company").Value,
+                         Price = cd.Element("price").Value,
+                         Year = cd.Element("year").Value,
+                     })
+                    .ToList()
+                );
+            }
+            else if (Tool == FilterTools.DOM)
+            {
+                XMLCatalog = new XmlDocument();
+                XMLCatalog.Load("../../data.xml");
+
+                var allDisks = XMLCatalog.SelectNodes("//cd");
+                List<CD> serialized = new List<CD>();
+                foreach (XmlNode disk in allDisks)
                 {
-                    Title = cd.Element("TITLE").Value,
-                    Artist = cd.Element("ARTIST").Value,
-                    Country = cd.Element("COUNTRY").Value,
-                    Company = cd.Element("COMPANY").Value,
-                    Price = cd.Element("PRICE").Value,
-                    Year = cd.Element("YEAR").Value,
-                })
-                .ToList()
-            );
+                    serialized.Add(new CD()
+                    {
+                        Title = disk.SelectSingleNode("title").InnerText,
+                        Artist = disk.SelectSingleNode("artist").InnerText,
+                        Company = disk.SelectSingleNode("company").InnerText,
+                        Country = disk.SelectSingleNode("country").InnerText,
+                        Price = disk.SelectSingleNode("price").InnerText,
+                        Year = disk.SelectSingleNode("year").InnerText,
+                    });
+                }
+                Disks.addDisks(serialized);
+            }
+
             FillSuggestions();
             ContentContainer.Text = Disks.FilteredToDisplay(FiltersData);
         }
 
         void FillSuggestions()
         {
+            Console.WriteLine($"FillSuggestions: Tool is {Tool}");
+
             TitleFilter.Items.Clear();
             CompanyFilter.Items.Clear();
             CountryFilter.Items.Clear();
             ArtistFilter.Items.Clear();
 
-            var match = Disks.Select(FiltersData);
+            if (Tool == FilterTools.LINQ)
+            {
+                var match = Disks.Select(FiltersData);
 
-            TitleFilter.Items.AddRange(
-                (from cd in match
-                 select cd.Title)
-                .Distinct()
-                .ToArray()
-            );
-            ArtistFilter.Items.AddRange(
-                (from cd in match
-                 select cd.Artist)
-                .Distinct()
-                .ToArray()
-            );
-            CompanyFilter.Items.AddRange(
-                (from cd in match
-                 select cd.Company)
-                .Distinct()
-                .ToArray()
-            );
-            CountryFilter.Items.AddRange(
-                (from cd in match
-                 select cd.Country)
-                .Distinct()
-                .ToArray()
-            );
+                TitleFilter.Items.AddRange(
+                    (from cd in match
+                     select cd.Title)
+                    .Distinct()
+                    .ToArray()
+                );
+                ArtistFilter.Items.AddRange(
+                    (from cd in match
+                     select cd.Artist)
+                    .Distinct()
+                    .ToArray()
+                );
+                CompanyFilter.Items.AddRange(
+                    (from cd in match
+                     select cd.Company)
+                    .Distinct()
+                    .ToArray()
+                );
+                CountryFilter.Items.AddRange(
+                    (from cd in match
+                     select cd.Country)
+                    .Distinct()
+                    .ToArray()
+                );
+            }
+            else if (Tool == FilterTools.DOM)
+            {
+                List<string> matches = new List<string>();
 
+                var titles = XMLCatalog.SelectNodes("//cd/title");
+                foreach (XmlNode item in titles) {
+                    matches.Add(item.InnerText);
+                }
+                TitleFilter.Items.AddRange(
+                    matches
+                    .Where(item => item.ToLower().Contains(FiltersData.Title.ToLower().Trim()))
+                    .Distinct()
+                    .ToArray()
+                );
+
+                matches.Clear();
+                var artists = XMLCatalog.SelectNodes("//cd/artist");
+                foreach (XmlNode item in artists)
+                {
+                    matches.Add(item.InnerText);
+                }
+                ArtistFilter.Items.AddRange(
+                    matches
+                    .Where(item => item.ToLower().Contains(FiltersData.Title.ToLower().Trim()))
+                    .Distinct()
+                    .ToArray()
+                );
+
+                matches.Clear();
+                var companies = XMLCatalog.SelectNodes("//cd/company");
+                foreach (XmlNode item in companies)
+                {
+                    matches.Add(item.InnerText);
+                }
+                CompanyFilter.Items.AddRange(
+                    matches
+                    .Where(item => item.ToLower().Contains(FiltersData.Title.ToLower().Trim()))
+                    .Distinct()
+                    .ToArray()
+                );
+
+                matches.Clear();
+                var countries = XMLCatalog.SelectNodes("//cd/country");
+                foreach (XmlNode item in countries)
+                {
+                    matches.Add(item.InnerText);
+                }
+                CountryFilter.Items.AddRange(
+                    matches
+                    .Where(item => item.ToLower().Contains(FiltersData.Title.ToLower().Trim()))
+                    .Distinct()
+                    .ToArray()
+                );
+            }
         }
 
         void InitializeFilters()
@@ -344,15 +442,65 @@ namespace XMLProcessing
             YearFilterFrom.Enter += Filter_Enter;
             PriceFilterFrom.Enter += Filter_Enter;
             PriceFilterTo.Enter += Filter_Enter;
+
+            Controls.Add(TitleFilter);
+            Controls.Add(ArtistFilter);
+            Controls.Add(CountryFilter);
+            Controls.Add(CompanyFilter);
+            Controls.Add(PriceFilterFrom);
+            Controls.Add(PriceFilterTo);
+            Controls.Add(YearFilterFrom);
+            Controls.Add(YearFilterTo);
         }
 
-        private void Filter_Enter(object sender, EventArgs e)
+        void InitializeRadioButtons()
+        {
+            LINQ = new RadioButton()
+            {
+                Text = "LINQ",
+                Name = "LINQ",
+                Checked = true,
+                Font = new Font("Verdana", 12),
+                Location = new Point(YearFilterFrom.Bounds.X, YearFilterFrom.Bounds.Bottom + 21),
+            };
+            DOM = new RadioButton()
+            {
+                Text = "DOM",
+                Name = "DOM",
+                Font = new Font("Verdana", 12),
+                Location = new Point(LINQ.Bounds.Right, LINQ.Bounds.Y),
+            };
+            SAX = new RadioButton()
+            {
+                Text = "SAX",
+                Name = "SAX",
+                Font = new Font("Verdana", 12),
+                Location = new Point(DOM.Bounds.Right, DOM.Bounds.Y),
+            };
+
+            LINQ.CheckedChanged += RadioButton_CheckedChanged;
+            DOM.CheckedChanged += RadioButton_CheckedChanged;
+            SAX.CheckedChanged += RadioButton_CheckedChanged;
+
+            Controls.Add(LINQ);
+            Controls.Add(DOM);
+            Controls.Add(SAX);
+        }
+
+        void RadioButton_CheckedChanged(object sender, EventArgs e)
+        {
+            RadioButton selectedTool = sender as RadioButton;
+            Tool = (int)typeof(FilterTools).GetProperty(selectedTool.Name).GetValue(null);
+            LoadData();
+        }
+
+        void Filter_Enter(object sender, EventArgs e)
         {
             if (sender is TextBox) (sender as TextBox).Text = "";
             else if (sender is ComboBox) (sender as ComboBox).Text = "";
         }
 
-        private void Filter_TextChanged(object sender, EventArgs e)
+        void Filter_TextChanged(object sender, EventArgs e)
         {
             string newValue, propName;
             if (sender is TextBox)
@@ -363,7 +511,7 @@ namespace XMLProcessing
                 FiltersData.GetType().GetProperty(propName).SetValue(FiltersData, newValue);
 
                 FillSuggestions();
-                f.Select(newValue.Length - 1, 0);
+                f.Select(newValue.Length, 0);
             }
             else
             {
@@ -412,6 +560,12 @@ namespace XMLProcessing
             YearFilterTo.Location = new Point((190 + 3 * ContentContainer.Width) / 2,
                 PriceFilterTo.Bounds.Bottom + 20);
             YearFilterTo.Size = new Size((ContentContainer.Width - 70) / 2, 100);
+
+            LINQ.Location = new Point(YearFilterFrom.Bounds.X, YearFilterFrom.Bounds.Bottom + 21);
+            DOM.Location = new Point(LINQ.Bounds.Right, LINQ.Bounds.Y);
+            SAX.Location = new Point(DOM.Bounds.Right, DOM.Bounds.Y);
+
+            Reload.Location = new Point(TitleFilter.Bounds.X, LINQ.Bounds.Bottom + 21);
         }
     }
 }
