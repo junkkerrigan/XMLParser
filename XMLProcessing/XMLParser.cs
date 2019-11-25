@@ -212,27 +212,34 @@ namespace XMLProcessing
 
         void FillSuggestions()
         {
+            TitleFilter.Items.Clear();
+            CompanyFilter.Items.Clear();
+            CountryFilter.Items.Clear();
+            ArtistFilter.Items.Clear();
+
+            var match = Disks.Select(FiltersData);
+
             TitleFilter.Items.AddRange(
-                (from cd in XMLCatalog.Element("CATALOG").Elements("CD")
-                 select cd.Element("TITLE").Value)
+                (from cd in match
+                 select cd.Title)
                 .Distinct()
                 .ToArray()
             );
             ArtistFilter.Items.AddRange(
-                (from cd in XMLCatalog.Element("CATALOG").Elements("CD")
-                 select cd.Element("ARTIST").Value)
+                (from cd in match
+                 select cd.Artist)
                 .Distinct()
                 .ToArray()
             );
             CompanyFilter.Items.AddRange(
-                (from cd in XMLCatalog.Element("CATALOG").Elements("CD")
-                 select cd.Element("COMPANY").Value)
+                (from cd in match
+                 select cd.Company)
                 .Distinct()
                 .ToArray()
             );
             CountryFilter.Items.AddRange(
-                (from cd in XMLCatalog.Element("CATALOG").Elements("CD")
-                 select cd.Element("COUNTRY").Value)
+                (from cd in match
+                 select cd.Country)
                 .Distinct()
                 .ToArray()
             );
@@ -347,14 +354,27 @@ namespace XMLProcessing
 
         private void Filter_TextChanged(object sender, EventArgs e)
         {
-            string newValue = (sender as TextBox == null)
-                ? (sender as ComboBox).Text 
-                : (sender as TextBox).Text;
-            string propName = (sender as TextBox == null)
-                ? (sender as ComboBox).Name
-                : (sender as TextBox).Name;
-            FiltersData.GetType().GetProperty(propName).SetValue(FiltersData, newValue);
+            string newValue, propName;
+            if (sender is TextBox)
+            {
+                TextBox f = sender as TextBox;
+                newValue = f.Text;
+                propName = f.Name;
+                FiltersData.GetType().GetProperty(propName).SetValue(FiltersData, newValue);
 
+                FillSuggestions();
+                f.Select(newValue.Length - 1, 0);
+            }
+            else
+            {
+                ComboBox f = sender as ComboBox;
+                newValue = f.Text;
+                propName = f.Name;
+                FiltersData.GetType().GetProperty(propName).SetValue(FiltersData, newValue);
+
+                FillSuggestions();
+                f.Select(newValue.Length, 0);
+            }
             ContentContainer.Text = Disks.FilteredToDisplay(FiltersData);
         }
 
