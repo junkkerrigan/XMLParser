@@ -252,7 +252,6 @@ namespace XMLProcessing
             int i = 0;
             foreach (XmlNode node in cdNodes)
             {
-                i++;
                 CDInfo cd = new CDInfo()
                 {
                     Title = node.SelectSingleNode("title").InnerText,
@@ -264,6 +263,7 @@ namespace XMLProcessing
                 };
                 if (filter.IsMatch(cd))
                 {
+                    i++;
                     dataToDisplay += cd.InfoToDisplay(i) + '\n';
                     titles.Add(cd.Title);
                     artists.Add(cd.Artist);
@@ -290,18 +290,87 @@ namespace XMLProcessing
 
     public class SAXParser : XMLParser
     {
+        XmlReader xmlReader;
+
         public SAXParser(string file)
         {
-        }
+            Load(file);
+        }       
 
         public ResultData FilterBy(CDFilter filter)
         {
-            throw new NotImplementedException();
+            CDInfo cd = null;
+            int i = 0;
+            var dataToDisplay = "";
+            List<string> titles = new List<string>();
+            List<string> artists = new List<string>();
+            List<string> companies = new List<string>();
+            List<string> countries = new List<string>();
+
+            while (xmlReader.Read())
+            {
+                switch (xmlReader.NodeType)
+                {
+                    case XmlNodeType.Element:
+                        switch(xmlReader.Name)
+                        {
+                            case "cd":
+                                cd = new CDInfo();
+                                break;
+                            case "title":
+                                cd.Title = xmlReader.Value;
+                                titles.Add(xmlReader.Value);
+                                break;
+                            case "artist":
+                                cd.Artist = xmlReader.Value;
+                                artists.Add(xmlReader.Value);
+                                break;
+                            case "company":
+                                cd.Company = xmlReader.Value;
+                                companies.Add(xmlReader.Value);
+                                break;
+                            case "country":
+                                cd.Country = xmlReader.Value;
+                                countries.Add(xmlReader.Value);
+                                break;
+                            case "price":
+                                cd.Price = xmlReader.Value;
+                                break;
+                            case "year":
+                                cd.Year = xmlReader.Value;
+                                break;
+                            default:
+                                break;
+                        }
+                        break;
+                    case XmlNodeType.EndElement:
+                        if (xmlReader.Name == "cd")
+                        {
+                            if (filter.IsMatch(cd))
+                            {
+                                i++;
+                                dataToDisplay += cd.InfoToDisplay(i) + '\n';
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            return new ResultData()
+            {
+                CDData = dataToDisplay,
+                Titles = titles.Distinct().ToArray(),
+                Artists = artists.Distinct().ToArray(),
+                Companies = companies.Distinct().ToArray(),
+                Countries = countries.Distinct().ToArray(),
+            };
         }
 
         public void Load(string file)
         {
-            throw new NotImplementedException();
+            xmlReader = XmlReader.Create(file);
         }
     }
 
@@ -706,9 +775,14 @@ namespace XMLProcessing
         void ResetFilters()
         {
             CurrentFilter = new CDFilter();
-            TitleFilter.Text = ArtistFilter.Text = CompanyFilter.Text = CountryFilter.Text =
-                PriceFilterFrom.Text = PriceFilterTo.Text = YearFilterFrom.Text =
-                YearFilterTo.Text = "";
+            TitleFilter.Text = DefaultValues["Title"];
+            ArtistFilter.Text = DefaultValues["Artist"];
+            CompanyFilter.Text = DefaultValues["Company"];
+            CountryFilter.Text = DefaultValues["Country"];
+            PriceFilterFrom.Text = DefaultValues["PriceFrom"];
+            PriceFilterTo.Text = DefaultValues["PriceTo"];
+            YearFilterFrom.Text = DefaultValues["YearFrom"];
+            YearFilterTo.Text = DefaultValues["YearTo"];
             FillVizualizator();
         }
 
