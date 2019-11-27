@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -11,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
+using System.Xml.Xsl;
 
 namespace XMLProcessing
 {
@@ -274,11 +276,15 @@ namespace XMLProcessing
         ComboBox TitleFilter, ArtistFilter, CountryFilter, CompanyFilter;
         TextBox PriceFilterFrom, PriceFilterTo, YearFilterFrom, YearFilterTo;
         RadioButton LINQ, DOM, SAX;
-        Button Search, Reload, Reset; 
+        Button Search, Reload, Reset, Transform;
+
+        // hardcoded paths
+        string XMLSourceFile = "../../data.xml";
+        string XSLTSourceFile = "../../transformationRules.xsl";
+        string HTMLTargetFile = "../../transformed.html";
 
         // logic elements
         CDFilter CurrentFilter = new CDFilter(); // stores filters values
-        string File = "../../data.xml";
         XMLParser Parser;
 
         Dictionary<string, bool> FirstTime = new Dictionary<string, bool>()
@@ -309,7 +315,7 @@ namespace XMLProcessing
 
             SizeChanged += XMLDataVisualizator_SizeChanged;
 
-            Parser = new LINQParser(File);
+            Parser = new LINQParser(XMLSourceFile);
             FillVizualizator();
         }
 
@@ -484,19 +490,33 @@ namespace XMLProcessing
             Search.Click += (s, e) => FillVizualizator();
             Reload.Click += (s, e) => ReloadFile();
             Reset.Click += (s, e) => ResetFilters();
+
+            Transform = new Button()
+            {
+                Text = "Transform to HTML",
+                Location = new Point(ContentContainer.Bounds.X +
+                    (ContentContainer.Width - 160) / 2, ContentContainer.Bounds.Bottom + 5),
+                Font = new Font("Verdana", 10),
+                Size = new Size(160, 30),
+            };
+
+            Transform.Click += (s, e) => TransformToHTML();
+
             Controls.Add(Search);
             Controls.Add(Reload);
             Controls.Add(Reset);
+            Controls.Add(Transform);
         }
 
+        
         // event handlers
         void RadioButton_CheckedChanged(object sender, EventArgs e)
         {
             RadioButton selectedTool = sender as RadioButton;
             //Tool = (int)typeof(FilterTools).GetProperty(selectedTool.Name).GetValue(null);
-            if (selectedTool.Name == "LINQ") Parser = new LINQParser(File);
-            //else if (selectedTool.Name == "DOM") Parser = new DOMParser(File);
-            //else if (selectedTool.Name == "SAX") Parser = new SAXParser(File);
+            if (selectedTool.Name == "LINQ") Parser = new LINQParser(XMLSourceFile);
+            //else if (selectedTool.Name == "DOM") Parser = new DOMParser(XMLSourceFile);
+            //else if (selectedTool.Name == "SAX") Parser = new SAXParser(XMLSourceFile);
         }
 
         void Filter_Enter(object sender, EventArgs e)
@@ -539,7 +559,7 @@ namespace XMLProcessing
 
         void XMLDataVisualizator_SizeChanged(object sender, EventArgs e)
         {
-            ContentContainer.Size = new Size((Width - 120) / 2, Height - 90);
+            ContentContainer.Size = new Size((Width - 120) / 2, ClientSize.Height - 70);
 
             TitleFilter.Location = new Point(90 + ContentContainer.Width, 30);
             TitleFilter.Size = new Size(ContentContainer.Width - 30, 100);
@@ -576,9 +596,16 @@ namespace XMLProcessing
             DOM.Location = new Point(LINQ.Bounds.Right, LINQ.Bounds.Y);
             SAX.Location = new Point(DOM.Bounds.Right, DOM.Bounds.Y);
 
-            Reload.Location = new Point(TitleFilter.Bounds.X, LINQ.Bounds.Bottom + 21);
+            Search.Location = new Point(TitleFilter.Bounds.X, LINQ.Bounds.Bottom + 21);
+            Reload.Location = new Point(Search.Bounds.Right + 10, Search.Bounds.Y);
+            Reset.Location = new Point(Reload.Bounds.Right + 10, Reload.Bounds.Y);
+
+            Transform.Location = new Point(ContentContainer.Bounds.X +
+                    (ContentContainer.Width - 160) / 2, ContentContainer.Bounds.Bottom + 5);
         }
 
+        
+        // logic implementation
         void FillVizualizator() // fills data depending on current filters
         {
             var res = Parser.FilterBy(CurrentFilter);
@@ -609,8 +636,15 @@ namespace XMLProcessing
 
         void ReloadFile()
         {
-            Parser.Load(File);
+            Parser.Load(XMLSourceFile);
             FillVizualizator();
+        }
+
+        void TransformToHTML()
+        {
+            XslCompiledTransform transform = new XslCompiledTransform();
+            transform.Load(XSLTSourceFile);
+            transform.Transform(XMLSourceFile, HTMLTargetFile);
         }
     }
 }
