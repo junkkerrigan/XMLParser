@@ -212,8 +212,6 @@ namespace XMLProcessing
                 dataToDisplay += match[i].InfoToDisplay(i + 1) + '\n';
             }
 
-            Console.WriteLine("LINQ");
-
             return new ResultData()
             {
                 CDData = dataToDisplay,
@@ -274,7 +272,6 @@ namespace XMLProcessing
                 }
             }
 
-            Console.WriteLine("DOM");
             return new ResultData()
             {
                 CDData = dataToDisplay,
@@ -338,6 +335,18 @@ namespace XMLProcessing
             { "YearTo", true },
         };
 
+        Dictionary<string, string> DefaultValues = new Dictionary<string, string>()
+        {
+            { "Title", "Title" },
+            { "Artist", "Artist" },
+            { "Company", "Company" },
+            { "Country", "Country" },
+            { "PriceFrom", "Price: from" },
+            { "PriceTo", "Price: to" },
+            { "YearFrom", "Year: from" },
+            { "YearTo", "Year: to" },
+        };
+
         public XMLDataVisualizator()
         {
             InitializeComponent();
@@ -367,7 +376,7 @@ namespace XMLProcessing
                 Location = new Point(90 + ContentContainer.Width, 30),
                 Size = new Size(ContentContainer.Width - 30, 100),
                 Font = new Font("Verdana", 16),
-                Text = "Title",
+                Text = DefaultValues["Title"],
                 Name = "Title",
             };
 
@@ -377,7 +386,7 @@ namespace XMLProcessing
                 TitleFilter.Bounds.Bottom + 30),
                 Size = new Size(ContentContainer.Width - 30, 100),
                 Font = new Font("Verdana", 16),
-                Text = "Artist",
+                Text = DefaultValues["Artist"],
                 Name = "Artist",
             };
 
@@ -387,7 +396,7 @@ namespace XMLProcessing
                 ArtistFilter.Bounds.Bottom + 30),
                 Size = new Size(ContentContainer.Width - 30, 100),
                 Font = new Font("Verdana", 16),
-                Text = "Country",
+                Text = DefaultValues["Country"],
                 Name = "Country",
             };
 
@@ -397,7 +406,7 @@ namespace XMLProcessing
                 CountryFilter.Bounds.Bottom + 30),
                 Size = new Size(ContentContainer.Width - 30, 100),
                 Font = new Font("Verdana", 16),
-                Text = "Company",
+                Text = DefaultValues["Company"],
                 Name = "Company",
             };
 
@@ -407,7 +416,7 @@ namespace XMLProcessing
                 CompanyFilter.Bounds.Bottom + 30),
                 Size = new Size((ContentContainer.Width - 70) / 2, 100),
                 Font = new Font("Verdana", 14),
-                Text = "Price: from",
+                Text = DefaultValues["PriceFrom"],
                 Name = "PriceFrom",
             };
 
@@ -417,7 +426,7 @@ namespace XMLProcessing
                 CompanyFilter.Bounds.Bottom + 30),
                 Size = new Size((ContentContainer.Width - 70) / 2, 100),
                 Font = new Font("Verdana", 14),
-                Text = "Price: to",
+                Text = DefaultValues["PriceTo"],
                 Name  = "PriceTo",
             };
 
@@ -427,7 +436,7 @@ namespace XMLProcessing
                 PriceFilterTo.Bounds.Bottom + 20),
                 Size = new Size((ContentContainer.Width - 70) / 2, 100),
                 Font = new Font("Verdana", 14),
-                Text = "Year: from",
+                Text = DefaultValues["YearFrom"],
                 Name = "YearFrom",
             };
 
@@ -437,7 +446,7 @@ namespace XMLProcessing
                 PriceFilterTo.Bounds.Bottom + 20),
                 Size = new Size((ContentContainer.Width - 70) / 2, 100),
                 Font = new Font("Verdana", 14),
-                Text = "Year: to",
+                Text = DefaultValues["YearTo"],
                 Name = "YearTo",
             };
             
@@ -458,6 +467,15 @@ namespace XMLProcessing
             YearFilterFrom.Enter += Filter_Enter;
             PriceFilterFrom.Enter += Filter_Enter;
             PriceFilterTo.Enter += Filter_Enter;
+
+            TitleFilter.Leave += Filter_Leave;
+            CompanyFilter.Leave += Filter_Leave;
+            CountryFilter.Leave += Filter_Leave;
+            ArtistFilter.Leave += Filter_Leave;
+            YearFilterTo.Leave += Filter_Leave;
+            YearFilterFrom.Leave += Filter_Leave;
+            PriceFilterFrom.Leave += Filter_Leave;
+            PriceFilterTo.Leave += Filter_Leave;
 
             Controls.Add(TitleFilter);
             Controls.Add(ArtistFilter);
@@ -563,16 +581,28 @@ namespace XMLProcessing
             if (sender is TextBox)
             {
                 TextBox filter = sender as TextBox;
-                if (!FirstTime[filter.Name]) return;
-                FirstTime[filter.Name] = false;
-                filter.Text = "";
+                if (DefaultValues[filter.Name] == filter.Text) filter.Text = "";
             }
             else if (sender is ComboBox) 
             {
                 ComboBox filter = sender as ComboBox;
-                if (!FirstTime[filter.Name]) return;
-                FirstTime[filter.Name] = false;
-                filter.Text = "";
+                if (DefaultValues[filter.Name] == filter.Text) filter.Text = "";
+            }
+        }
+
+        void Filter_Leave(object sender, EventArgs e)
+        {
+            if (sender is TextBox)
+            {
+                TextBox filter = sender as TextBox;
+                if (string.IsNullOrWhiteSpace(filter.Text)) 
+                    filter.Text = DefaultValues[filter.Name];
+            }
+            else if (sender is ComboBox)
+            {
+                ComboBox filter = sender as ComboBox;
+                if (string.IsNullOrWhiteSpace(filter.Text))
+                    filter.Text = DefaultValues[filter.Name];
             }
         }
 
@@ -584,6 +614,7 @@ namespace XMLProcessing
                 TextBox f = sender as TextBox;
                 newValue = f.Text;
                 propName = f.Name;
+                if (newValue == DefaultValues[propName]) return;
                 CurrentFilter.SetFilter(propName, newValue);
             }
             else
@@ -591,8 +622,8 @@ namespace XMLProcessing
                 ComboBox f = sender as ComboBox;
                 newValue = f.Text;
                 propName = f.Name;
+                if (newValue == DefaultValues[propName]) return;
                 CurrentFilter.SetFilter(propName, newValue);
-
             }
         }
 
