@@ -314,6 +314,7 @@ namespace XMLProcessing
             InitializeControlButtons();
 
             SizeChanged += XMLDataVisualizator_SizeChanged;
+            FormClosing += XMLDataVisualizator_Closing;
 
             Parser = new LINQParser(XMLSourceFile);
             FillVizualizator();
@@ -604,7 +605,15 @@ namespace XMLProcessing
                     (ContentContainer.Width - 160) / 2, ContentContainer.Bounds.Bottom + 5);
         }
 
-        
+        void XMLDataVisualizator_Closing(object sender, FormClosingEventArgs e)
+        {
+            var result = MessageBox.Show("Are you sure you want to leave?", "Exit confirmation",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result != DialogResult.Yes)
+                e.Cancel = true;
+        }
+
+
         // logic implementation
         void FillVizualizator() // fills data depending on current filters
         {
