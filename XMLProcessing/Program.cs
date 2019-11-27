@@ -16,7 +16,7 @@ namespace XMLProcessing
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new XMLParser());
+            Application.Run(new XMLDataVisualizator());
         }
     }
 }
