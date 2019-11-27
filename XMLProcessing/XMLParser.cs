@@ -162,10 +162,10 @@ namespace XMLProcessing
     public class ResultData
     {
         public string CDData { get; set; } = string.Empty;
-        public List<string> Titles { get; set; } = new List<string>();
-        public List<string> Artists { get; set; } = new List<string>();
-        public List<string> Countries { get; set; } = new List<string>();
-        public List<string> Companies { get; set; } = new List<string>();
+        public string[] Titles { get; set; }
+        public string[] Artists { get; set; }
+        public string[] Countries { get; set; }
+        public string[] Companies { get; set; }
     }
 
     public interface XMLParser
@@ -212,43 +212,82 @@ namespace XMLProcessing
                 dataToDisplay += match[i].InfoToDisplay(i + 1) + '\n';
             }
 
+            Console.WriteLine("LINQ");
+
             return new ResultData()
             {
                 CDData = dataToDisplay,
-                Titles = new List<string>(
-                    (from cd in match
+                Titles = (from cd in match
                     select cd.Title)
-                    .Distinct()),
-                Artists = new List<string>(
-                    (from cd in match
+                    .Distinct().ToArray(),
+                Artists = (from cd in match
                     select cd.Artist)
-                    .Distinct()),
-                Countries = new List<string>(
-                    (from cd in match
+                    .Distinct().ToArray(),
+                Countries = (from cd in match
                     select cd.Country)
-                    .Distinct()),
-                Companies = new List<string>(
-                    (from cd in match
+                    .Distinct().ToArray(),
+                Companies = (from cd in match
                     select cd.Company)
-                    .Distinct()),
+                    .Distinct().ToArray(),
             };
         }
     }
 
     public class DOMParser : XMLParser
     {
+        XmlDocument xmlDoc = new XmlDocument();
+
         public DOMParser(string file)
         {
+            Load(file);
         }
 
         public ResultData FilterBy(CDFilter filter)
         {
-            throw new NotImplementedException();
+            var cdNodes = xmlDoc.SelectNodes("//cd");
+            
+            var dataToDisplay = "";
+            List<string> titles = new List<string>();
+            List<string> artists = new List<string>();
+            List<string> companies = new List<string>();
+            List<string> countries = new List<string>();
+            int i = 0;
+            foreach (XmlNode node in cdNodes)
+            {
+                i++;
+                CDInfo cd = new CDInfo()
+                {
+                    Title = node.SelectSingleNode("title").InnerText,
+                    Artist = node.SelectSingleNode("artist").InnerText,
+                    Company = node.SelectSingleNode("company").InnerText,
+                    Country = node.SelectSingleNode("country").InnerText,
+                    Price = node.SelectSingleNode("price").InnerText,
+                    Year = node.SelectSingleNode("year").InnerText,
+                };
+                if (filter.IsMatch(cd))
+                {
+                    dataToDisplay += cd.InfoToDisplay(i) + '\n';
+                    titles.Add(cd.Title);
+                    artists.Add(cd.Artist);
+                    companies.Add(cd.Company);
+                    countries.Add(cd.Country);
+                }
+            }
+
+            Console.WriteLine("DOM");
+            return new ResultData()
+            {
+                CDData = dataToDisplay,
+                Titles = titles.Distinct().ToArray(),
+                Artists = artists.Distinct().ToArray(),
+                Companies = companies.Distinct().ToArray(),
+                Countries = countries.Distinct().ToArray(),
+            };
         }
 
         public void Load(string file)
         {
-            throw new NotImplementedException();
+            xmlDoc.Load(file);
         }
     }
 
@@ -514,9 +553,8 @@ namespace XMLProcessing
         void RadioButton_CheckedChanged(object sender, EventArgs e)
         {
             RadioButton selectedTool = sender as RadioButton;
-            //Tool = (int)typeof(FilterTools).GetProperty(selectedTool.Name).GetValue(null);
             if (selectedTool.Name == "LINQ") Parser = new LINQParser(XMLSourceFile);
-            //else if (selectedTool.Name == "DOM") Parser = new DOMParser(XMLSourceFile);
+            else if (selectedTool.Name == "DOM") Parser = new DOMParser(XMLSourceFile);
             //else if (selectedTool.Name == "SAX") Parser = new SAXParser(XMLSourceFile);
         }
 
@@ -627,7 +665,7 @@ namespace XMLProcessing
             ArtistFilter.Items.Clear();
             CountryFilter.Items.Clear();
             CompanyFilter.Items.Clear();
-
+            
             TitleFilter.Items.AddRange(res.Titles.ToArray());
             ArtistFilter.Items.AddRange(res.Artists.ToArray());
             CountryFilter.Items.AddRange(res.Countries.ToArray());
