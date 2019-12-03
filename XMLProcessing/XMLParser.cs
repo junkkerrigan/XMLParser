@@ -23,7 +23,7 @@ namespace XMLProcessing
         public static int SAX { get; set; } = 2;
     }
 
-    public class CDInfo 
+    public class Info 
     {
         public string Title { get; set; }
         public string Artist { get; set; }
@@ -45,7 +45,7 @@ namespace XMLProcessing
         }
     }
 
-    public class CDFilter 
+    public class Filter 
     {
         public string Title { get; set; } = string.Empty;
         public string Artist { get; set; } = string.Empty;
@@ -144,7 +144,7 @@ namespace XMLProcessing
             }
         }
 
-        public bool IsMatch(CDInfo candidate)
+        public bool IsMatch(Info candidate)
         {
             return (
                 candidate.Title.ToLower().Contains(Title)
@@ -161,7 +161,7 @@ namespace XMLProcessing
 
     public class ResultData
     {
-        public string CDData { get; set; } = string.Empty;
+        public string Data { get; set; } = string.Empty;
         public string[] Titles { get; set; }
         public string[] Artists { get; set; }
         public string[] Countries { get; set; }
@@ -170,14 +170,14 @@ namespace XMLProcessing
 
     public interface XMLParser
     {
-        ResultData FilterBy(CDFilter filter);
+        ResultData FilterBy(Filter filter);
 
         void Load(string file);
     }
 
     public class LINQParser : XMLParser
     {
-        List<CDInfo> CDs;
+        List<Info> disks;
 
         public LINQParser(string file)
         {
@@ -187,9 +187,9 @@ namespace XMLProcessing
         public void Load(string file)
         {
             XDocument XMLData = XDocument.Load(file);
-            CDs = new List<CDInfo>(
+            disks = new List<Info>(
                 from cd in XMLData.Element("catalog").Elements("cd")
-                select new CDInfo()
+                select new Info()
                 {
                     Title = cd.Element("title").Value,
                     Artist = cd.Element("artist").Value,
@@ -200,10 +200,10 @@ namespace XMLProcessing
                 });
         }
 
-        public ResultData FilterBy(CDFilter filter)
+        public ResultData FilterBy(Filter filter)
         {
-            List<CDInfo> match = new List<CDInfo>(
-                from cd in CDs
+            List<Info> match = new List<Info>(
+                from cd in disks
                 where filter.IsMatch(cd)
                 select cd);
             string dataToDisplay = "";
@@ -214,7 +214,7 @@ namespace XMLProcessing
 
             return new ResultData()
             {
-                CDData = dataToDisplay,
+                Data = dataToDisplay,
                 Titles = (from cd in match
                     select cd.Title)
                     .Distinct().ToArray(),
@@ -240,7 +240,7 @@ namespace XMLProcessing
             Load(file);
         }
 
-        public ResultData FilterBy(CDFilter filter)
+        public ResultData FilterBy(Filter filter)
         {
             var cdNodes = xmlDoc.SelectNodes("//cd");
             
@@ -252,7 +252,7 @@ namespace XMLProcessing
             int i = 0;
             foreach (XmlNode node in cdNodes)
             {
-                CDInfo cd = new CDInfo()
+                Info cd = new Info()
                 {
                     Title = node.SelectSingleNode("title").InnerText,
                     Artist = node.SelectSingleNode("artist").InnerText,
@@ -274,7 +274,7 @@ namespace XMLProcessing
 
             return new ResultData()
             {
-                CDData = dataToDisplay,
+                Data = dataToDisplay,
                 Titles = titles.Distinct().ToArray(),
                 Artists = artists.Distinct().ToArray(),
                 Companies = companies.Distinct().ToArray(),
@@ -291,15 +291,17 @@ namespace XMLProcessing
     public class SAXParser : XMLParser
     {
         XmlReader xmlReader;
+        string File;
 
         public SAXParser(string file)
         {
-            Load(file);
+            File = file;
         }       
 
-        public ResultData FilterBy(CDFilter filter)
+        public ResultData FilterBy(Filter filter)
         {
-            CDInfo cd = null;
+            Load(File);
+            Info cd = null;
             int i = 0;
             var dataToDisplay = "";
             List<string> titles = new List<string>();
@@ -315,28 +317,34 @@ namespace XMLProcessing
                         switch(xmlReader.Name)
                         {
                             case "cd":
-                                cd = new CDInfo();
+                                cd = new Info();
                                 break;
                             case "title":
+                                xmlReader.Read();
                                 cd.Title = xmlReader.Value;
                                 titles.Add(xmlReader.Value);
                                 break;
                             case "artist":
+                                xmlReader.Read();
                                 cd.Artist = xmlReader.Value;
                                 artists.Add(xmlReader.Value);
                                 break;
                             case "company":
+                                xmlReader.Read();
                                 cd.Company = xmlReader.Value;
                                 companies.Add(xmlReader.Value);
                                 break;
                             case "country":
+                                xmlReader.Read();
                                 cd.Country = xmlReader.Value;
                                 countries.Add(xmlReader.Value);
                                 break;
                             case "price":
+                                xmlReader.Read();
                                 cd.Price = xmlReader.Value;
                                 break;
                             case "year":
+                                xmlReader.Read();
                                 cd.Year = xmlReader.Value;
                                 break;
                             default:
@@ -360,7 +368,7 @@ namespace XMLProcessing
 
             return new ResultData()
             {
-                CDData = dataToDisplay,
+                Data = dataToDisplay,
                 Titles = titles.Distinct().ToArray(),
                 Artists = artists.Distinct().ToArray(),
                 Companies = companies.Distinct().ToArray(),
@@ -389,7 +397,7 @@ namespace XMLProcessing
         string HTMLTargetFile = "../../transformed.html";
 
         // logic elements
-        CDFilter CurrentFilter = new CDFilter(); // stores filters values
+        Filter CurrentFilter = new Filter(); // stores filters values
         XMLParser Parser;
 
         Dictionary<string, bool> FirstTime = new Dictionary<string, bool>()
@@ -642,7 +650,7 @@ namespace XMLProcessing
             RadioButton selectedTool = sender as RadioButton;
             if (selectedTool.Name == "LINQ") Parser = new LINQParser(XMLSourceFile);
             else if (selectedTool.Name == "DOM") Parser = new DOMParser(XMLSourceFile);
-            //else if (selectedTool.Name == "SAX") Parser = new SAXParser(XMLSourceFile);
+            else if (selectedTool.Name == "SAX") Parser = new SAXParser(XMLSourceFile);
         }
 
         void Filter_Enter(object sender, EventArgs e)
@@ -757,9 +765,9 @@ namespace XMLProcessing
         {
             var res = Parser.FilterBy(CurrentFilter);
             ContentContainer.Text = 
-                String.IsNullOrWhiteSpace(res.CDData)
+                String.IsNullOrWhiteSpace(res.Data)
                 ? "No appropriate disks found."
-                : res.CDData;
+                : res.Data;
 
             TitleFilter.Items.Clear();
             ArtistFilter.Items.Clear();
@@ -774,7 +782,7 @@ namespace XMLProcessing
 
         void ResetFilters()
         {
-            CurrentFilter = new CDFilter();
+            CurrentFilter = new Filter();
             TitleFilter.Text = DefaultValues["Title"];
             ArtistFilter.Text = DefaultValues["Artist"];
             CompanyFilter.Text = DefaultValues["Company"];

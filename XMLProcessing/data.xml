@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <catalog>
 	<cd>
-		<title>Имперская Пародия</title>
-		<artist>Боб Дилан</artist>
-		<country>США</country>
-		<company>Колумбия</company>
-		<price>10.90</price>
-		<year>1985</year>
-	</cd>
-	<cd>
 		<title>Спрячь свое сердце</title>
 		<artist>Бонни Тайлер</artist>
 		<country>Соединенное Королевство</country>
