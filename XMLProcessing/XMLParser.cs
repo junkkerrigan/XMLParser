@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -60,16 +61,16 @@ namespace XMLProcessing
         {
             public static class InvalidFilter
             {
-                public static int YearFrom { get; } = int.MaxValue;
-                public static int YearTo { get; } = int.MinValue;
+                public static float YearFrom { get; } = float.MaxValue;
+                public static float YearTo { get; } = float.MinValue;
                 public static float PriceFrom { get; } = float.MaxValue;
                 public static float PriceTo { get; } = float.MinValue;
             }
 
             public static class EmptyFilter
             {
-                public static int YearFrom { get; } = int.MinValue;
-                public static int YearTo { get; } = int.MaxValue;
+                public static float YearFrom { get; } = float.MinValue;
+                public static float YearTo { get; } = float.MaxValue;
                 public static float PriceFrom { get; } = float.MinValue;
                 public static float PriceTo { get; } = float.MaxValue;
             }
@@ -322,22 +323,18 @@ namespace XMLProcessing
                             case "title":
                                 xmlReader.Read();
                                 cd.Title = xmlReader.Value;
-                                titles.Add(xmlReader.Value);
                                 break;
                             case "artist":
                                 xmlReader.Read();
                                 cd.Artist = xmlReader.Value;
-                                artists.Add(xmlReader.Value);
                                 break;
                             case "company":
                                 xmlReader.Read();
                                 cd.Company = xmlReader.Value;
-                                companies.Add(xmlReader.Value);
                                 break;
                             case "country":
                                 xmlReader.Read();
                                 cd.Country = xmlReader.Value;
-                                countries.Add(xmlReader.Value);
                                 break;
                             case "price":
                                 xmlReader.Read();
@@ -356,6 +353,10 @@ namespace XMLProcessing
                         {
                             if (filter.IsMatch(cd))
                             {
+                                titles.Add(cd.Title);
+                                artists.Add(cd.Artist);
+                                companies.Add(cd.Company);
+                                countries.Add(cd.Country);
                                 i++;
                                 dataToDisplay += cd.InfoToDisplay(i) + '\n';
                             }
